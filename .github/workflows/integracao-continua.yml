@@ -32,7 +32,7 @@ jobs:
                 version: 11
             
             - name: 3. Configurar o Node.js 24
-              uses: action/setup-node@v4
+              uses: actions/setup-node@v4
               with:
                 node-version: 24
 
