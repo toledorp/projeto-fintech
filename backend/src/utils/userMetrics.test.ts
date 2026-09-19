@@ -45,7 +45,7 @@ describe('Cálculo de Estatistica e Métrica: userMetrics.ts', () => {
       },
       {
         id: 4,
-        nome: 'Daniel',
+        name: 'Daniel',
         email: 'daniel@fatec.sp.gov.br',
         role: 'admin',
         status: 'inativo',
