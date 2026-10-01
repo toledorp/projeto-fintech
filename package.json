@@ -1,8 +1,10 @@
 {
-  "name": "projeto-monorepo-iec",
+  "name": "projeto-fintech-iec",
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "pnpm --dir backend dev",
+    "dev:app": "pnpm --dir app dev",
     "docker:build-api": "docker build -t api-service ./backend",
     "docker:build-app": "docker build -t app-service ./app",
     "compose:up": "docker compose up -d",

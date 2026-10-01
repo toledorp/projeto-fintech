@@ -101,9 +101,117 @@
           "404": { "description": "Usuario nao encontrado" }
         }
       }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Autenticar usuário",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Token JWT gerado com sucesso" },
+          "400": { "description": "E-mail e senha são obrigatórios" },
+          "401": { "description": "Credenciais inválidas" }
+        }
+      }
+    },
+    "/lancamentos": {
+      "get": {
+        "summary": "Listar lançamentos do usuário autenticado",
+        "tags": ["Lançamentos financeiros"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Lista de lançamentos" },
+          "401": { "description": "Token ausente ou inválido" }
+        }
+      },
+      "post": {
+        "summary": "Criar lançamento financeiro",
+        "tags": ["Lançamentos financeiros"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFinancialEntryDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Lançamento criado" },
+          "400": { "description": "Dados inválidos" },
+          "401": { "description": "Token ausente ou inválido" }
+        }
+      }
+    },
+    "/lancamentos/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": { "type": "integer", "minimum": 1 }
+        }
+      ],
+      "get": {
+        "summary": "Buscar lançamento por ID",
+        "tags": ["Lançamentos financeiros"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Lançamento encontrado" },
+          "401": { "description": "Token ausente ou inválido" },
+          "404": { "description": "Lançamento não encontrado" }
+        }
+      },
+      "put": {
+        "summary": "Atualizar lançamento financeiro",
+        "tags": ["Lançamentos financeiros"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFinancialEntryDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Lançamento atualizado" },
+          "400": { "description": "Dados inválidos" },
+          "401": { "description": "Token ausente ou inválido" },
+          "404": { "description": "Lançamento não encontrado" }
+        }
+      },
+      "delete": {
+        "summary": "Excluir lançamento financeiro",
+        "tags": ["Lançamentos financeiros"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "204": { "description": "Lançamento removido" },
+          "401": { "description": "Token ausente ou inválido" },
+          "404": { "description": "Lançamento não encontrado" }
+        }
+      }
     }
   },
   "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
     "schemas": {
       "User": {
         "type": "object",
@@ -131,6 +239,77 @@
         "properties": {
           "nome": { "type": "string", "example": "Ana Silva Atualizada" },
           "email": { "type": "string", "example": "ana.novo@email.com" }
+        }
+      },
+      "LoginDTO": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "ana.silva@email.com"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "Password123"
+          }
+        }
+      },
+      "FinancialEntry": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "descricao": { "type": "string", "example": "Salário mensal" },
+          "valor": { "type": "number", "format": "decimal", "example": 3500.0 },
+          "tipo": {
+            "type": "string",
+            "enum": ["RECEITA", "DESPESA"],
+            "example": "RECEITA"
+          },
+          "categoria": { "type": "string", "example": "Trabalho" },
+          "data_lancamento": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-22"
+          },
+          "user_id": { "type": "integer", "example": 1 },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateFinancialEntryDTO": {
+        "type": "object",
+        "required": [
+          "descricao",
+          "valor",
+          "tipo",
+          "categoria",
+          "data_lancamento"
+        ],
+        "properties": {
+          "descricao": {
+            "type": "string",
+            "minLength": 2,
+            "example": "Conta de energia"
+          },
+          "valor": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "example": 180.5
+          },
+          "tipo": {
+            "type": "string",
+            "enum": ["RECEITA", "DESPESA"],
+            "example": "DESPESA"
+          },
+          "categoria": { "type": "string", "example": "Moradia" },
+          "data_lancamento": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-22"
+          }
         }
       }
     }

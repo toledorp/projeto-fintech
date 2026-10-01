@@ -18,15 +18,10 @@ services:
     container_name: api-service
     ports:
       - "3000:3000"
+    env_file:
+      - ./backend/.env
     environment:
       - PORT=3000
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_DIALECT=postgres
-      - DB_SSL=false
       - NODE_ENV=development
       - CI=true
       # Habilitar o polling para detectar alterações de arquivos no windows

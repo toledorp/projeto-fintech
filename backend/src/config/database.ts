@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const isSSL = process.env.DB_SSL === 'true';
+const databaseUrl = process.env.DATABASE_URL;
 
 const sequelizeOptions: Options = {
   host: process.env.DB_HOST || 'localhost',
@@ -20,9 +21,11 @@ const sequelizeOptions: Options = {
     : {},
 };
 
-export const sequelize = new Sequelize(
-  process.env.DB_NAME || 'postgres',
-  process.env.DB_USER || 'postgres',
-  process.env.DB_PASSWORD || '',
-  sequelizeOptions,
-);
+export const sequelize = databaseUrl
+  ? new Sequelize(databaseUrl, sequelizeOptions)
+  : new Sequelize(
+      process.env.DB_NAME || 'postgres',
+      process.env.DB_USER || 'postgres',
+      process.env.DB_PASSWORD || '',
+      sequelizeOptions,
+    );

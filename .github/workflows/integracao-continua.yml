@@ -1,4 +1,4 @@
-name: Monorepo CI Pipeline
+name: Fintech CI Pipeline
 
 on: 
     # Dispara automaaticamente ao enviar novos commits para a branch main
@@ -97,7 +97,7 @@ jobs:
                 docker build -t api-service:test ./backend
             
             
-            - name: 7. Validar Frontend (quando presente no monorepo)
+            - name: 7. Validar Frontend (quando presente no fintech)
               run: |
                 if [ -d "app"]; then
                     echo "Subprojeto frontend encontrado. Iniciando validação..."
@@ -106,7 +106,7 @@ jobs:
                     pnpm run build
                     docker build -t app-service:test ./app
                 else 
-                    echo "Subprojeto app ainda não adicionado ao monorepo."
+                    echo "Subprojeto app ainda não adicionado ao ."
                 fi
 
             - name: 8. Resumo da Execução
