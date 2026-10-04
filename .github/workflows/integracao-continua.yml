@@ -104,7 +104,7 @@ jobs:
                     cd app
                     pnpm install --frozen-lockfile
                     pnpm run build
-                    docker build -t app-service:test ./app
+                    docker build -t app-service:test .
                 else 
                     echo "Subprojeto app ainda não adicionado ao ."
                 fi
