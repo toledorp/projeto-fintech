@@ -1,7 +1,7 @@
 
 import type { User, CreateUseDTO } from "../types/user";
 
-const API_BASE_URL = "http://localhost.3000/api";
+const API_BASE_URL = "http://localhost:3000/api";
 
 export const userService = {
     //Get / api/users - Listar todos os usuarios

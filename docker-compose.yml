@@ -32,7 +32,7 @@ services:
     volumes:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
-    command: pnpm dev
+    command: ["node", "node_modules/tsx/dist/cli.mjs", "watch", "src/server.ts"]
 
 volumes:
   pgdata:
