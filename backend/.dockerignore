@@ -1,7 +1,14 @@
 node_modules
 dist
-npm-debug.log
 .git
 .github
+.env
+.env.*
+!.env.example
+*.test.*
+*.spec.*
+coverage
+requests
+*.log
 Dockerfile
 .dockerignore

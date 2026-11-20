@@ -1,31 +1,33 @@
-# 1. Define a imagem de origem base 
-FROM node:24-alpine
-
-# Configura diretorio global do pnpm
-ENV PNPM_HOME="/root/.local/share/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-
-# 2. Define diretório de trabalho interno do container
+FROM node:24-alpine AS base
 WORKDIR /app
+RUN npm install --global pnpm@11.21.0
 
-# 3. Instalar o pnpm globalmente para gerenciar as dependências
-RUN npm install -g pnpm
+FROM base AS dependencies
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 
-# Desativa a restrição do pnpm 11
-RUN pnpm config set strict-dep-builds false
+FROM dependencies AS build
+COPY tsconfig.json ./
+COPY src ./src
+RUN pnpm run build
 
-# 4. Copia apenas o manifesto de dependências
-COPY package.json ./
+# Execute this target separately to apply migrations before starting the app.
+FROM dependencies AS migration
+COPY .sequelizerc ./
+COPY src/config/config.cjs ./src/config/config.cjs
+COPY src/migrations ./src/migrations
+CMD ["pnpm", "run", "migrate:production"]
 
-# 5. Instalar as dependências do projeto
-RUN pnpm install
+FROM base AS production-dependencies
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --prod --frozen-lockfile
 
-# 6. Copiat todo os restante do código
-COPY . .
-
-# 7. Expoe a porta padrão LDW
+FROM node:24-alpine AS production
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=production-dependencies /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/dist ./dist
+USER node
 EXPOSE 3000
-
-# 8. Comando para inicializar a aplicação
-CMD ["pnpm", "dev"]
-
+CMD ["node", "dist/server.js"]

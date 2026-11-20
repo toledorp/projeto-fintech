@@ -1,117 +1,112 @@
 name: Fintech CI Pipeline
 
-on: 
-    # Dispara automaaticamente ao enviar novos commits para a branch main
-    push:
-        branches:
-            - main
-    pull_request:
-        branches:
-            - main
-    # Permite execução manual pelo painel web do github Actions
-    workflow_dispatch:
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
-# Permite cancelar as execuções anteriores na mesma branch se novos commits forem enviados
+permissions:
+  contents: read
+
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-    # Job 1 : Validações Estaticas e Teste Unitarios Rapidos (faill-fast)
-    validacoes-e-testes:
-        name: 1. Qualidade, Tipos e Testes Unitários
-        runs-on: ubuntu-latest
+  backend-ci:
+    name: Validação e compilação do backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run type-check
+      - run: pnpm run build
 
-        steps:
-            - name: 1. Baixar o codigo-fonte
-              uses: actions/checkout@v4
+  docker:
+    name: Build Docker do backend
+    needs: backend-ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t fintech-backend:ci ./backend
 
-            - name: 2. Habilitar o pnpm
-              uses: pnpm/action-setup@v4
-              with:
-                version: 11
-            
-            - name: 3. Configurar o Node.js 24
-              uses: actions/setup-node@v4
-              with:
-                node-version: 24
+  deploy-render:
+    name: Acionar deploy no Render
+    needs: [backend-ci, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enviar deploy hook
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          DEPLOY_COMMIT: ${{ github.sha }}
+        shell: bash
+        run: |
+          if [[ -z "$DEPLOY_HOOK_URL" ]]; then
+            echo "::error::O segredo RENDER_DEPLOY_HOOK_URL não está configurado."
+            exit 1
+          fi
+          separator='?'
+          [[ "$DEPLOY_HOOK_URL" == *'?'* ]] && separator='&'
+          if ! status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --request POST --connect-timeout 10 --max-time 30 \
+            "${DEPLOY_HOOK_URL}${separator}ref=${DEPLOY_COMMIT}" 2>/dev/null); then
+            echo "::error::Falha ao conectar ao deploy hook do Render."
+            exit 1
+          fi
+          if [[ "$status" != 200 && "$status" != 201 ]]; then
+            echo "::error::Deploy hook retornou HTTP $status."
+            exit 1
+          fi
+          echo "Deploy solicitado ao Render (HTTP $status)."
 
-            - name: 4. Instalar dependencias do backend
-              run: |
-                cd backend
-                pnpm install --frozen-lockfile
+  qualidade-backend:
+    name: Qualidade e testes do backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run format:check
+      - run: pnpm run test:run
 
-            - name: 5. Validar Padronização de Código (ESLint)
-              run: |
-                cd backend
-                pnpm run lint
-
-            - name: 6. Validar Formatação de Arquivos (Prettier)
-              run: |
-                cd backend
-                pnpm run format:check
-
-            - name: 7. Checagem de Tipos no Backend (tsc --noEmit)
-              run: |
-                cd backend
-                pnpm run type-check
-
-            - name: 8. Executar Testes Unitários com Vitest
-              run: |
-                cd backend
-                pnpm run test:run
-
-    # Job 2: Compilação de produção e Imagens Docker (Só executa se o Job 1 passa)
-    build-e-docker:
-        name: 2. Compilação e imagens Docker
-        needs: validacoes-e-testes
-        runs-on: ubuntu-latest
-
-        
-        steps:
-            - name: 1. Baixar o codigo-fonte
-              uses: actions/checkout@v4
-
-            - name: 2. Habilitar o pnpm
-              uses: pnpm/action-setup@v4
-              with:
-                version: 11
-            
-            - name: 3. Configurar o Node.js 24
-              uses: actions/setup-node@v4
-              with:
-                node-version: 24
-
-            - name: 4. Instalar dependencias do backend
-              run: |
-                cd backend
-                pnpm install --frozen-lockfile
-    
-            - name: 5. Validar tipos e Compilar o Backend (Express)
-              run: |
-                cd backend
-                pnpm run build
-              
-            - name: 6. Validar Construção da imagem Docker da API
-              run: |
-                docker build -t api-service:test ./backend
-            
-            
-            - name: 7. Validar Frontend (quando presente no fintech)
-              run: |
-                if [ -d "app" ]; then
-                    echo "Subprojeto frontend encontrado. Iniciando validação..."
-                    cd app
-                    pnpm install --frozen-lockfile
-                    pnpm run build
-                    docker build -t app-service:test .
-                else 
-                    echo "Subprojeto app ainda não adicionado ao ."
-                fi
-
-            - name: 8. Resumo da Execução
-              run: |
-                echo "### Resumo da Execução da Pipeline da CI" >> $GITHUB_STEP_SUMMARY
-                echo "Integração Continua cocluida com sucesso!" >> $GITHUB_STEP_SUMMARY
-                echo "- Autor: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-                echo "- Commit: ${{github.sha }}" >> $GITHUB_STEP_SUMMARY
+  frontend:
+    name: Build e Docker do frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validar frontend quando presente
+        shell: bash
+        run: |
+          if [ -d app ]; then
+            cd app
+            pnpm install --frozen-lockfile
+            pnpm run build
+            docker build -t app-service:test .
+          fi
