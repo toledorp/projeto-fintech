@@ -8,6 +8,7 @@
     "build": "tsc",
     "type-check": "tsc --noEmit",
     "start": "node dist/server.js",
+    "migrate:production": "sequelize-cli db:migrate --env production",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,json,md}\"",
@@ -27,7 +28,7 @@
       "onFail": "download"
     }
   },
-  "type": "module",
+  "type": "commonjs",
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@types/bcryptjs": "^3.0.0",

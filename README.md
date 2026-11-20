@@ -122,3 +122,47 @@ Com Docker Desktop instalado e iniciado:
 ```powershell
 docker compose up --build
 ```
+
+
+### Migrations em producao
+
+Execute as migrations separadamente antes de iniciar a nova versao da API.
+A partir da raiz do repositorio, construa o estagio de migrations:
+
+```sh
+docker build --target migration -t fintech-migrations ./backend
+docker run --rm --env-file /caminho/seguro/para/variaveis.env fintech-migrations
+```
+
+O arquivo de ambiente deve fornecer `DATABASE_URL` ou as variaveis `DB_HOST`,
+`DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASSWORD`, alem de `DB_SSL` quando
+necessario. Mantenha credenciais fora do repositorio e do contexto Docker.
+O comando executa `sequelize-cli db:migrate --env production`; o Sequelize
+registra as migrations aplicadas na tabela `SequelizeMeta`. Nao execute duas
+instancias de migration simultaneamente.
+
+
+### Configuração do Render e do GitHub Actions
+
+1. No Render, crie um **Web Service** com runtime Docker, conecte o repositório
+   e selecione a branch `main`. Para o monorepositório, defina **Root Directory**
+   como `backend`; use `./Dockerfile` como Dockerfile Path e `.` como Docker
+   Build Context, ambos relativos a esse diretório.
+2. Em **Auto-Deploy**, selecione **Off** (ou **No**, conforme a interface),
+   para que a publicação seja solicitada pelo workflow. Configure **Health
+   Check Path** como `/api/health`.
+3. Configure `NODE_ENV=production`, `JWT_SECRET` e `DATABASE_URL` ou as
+   variáveis `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASSWORD`. Use
+   `DB_SSL=true` quando exigido pelo provedor. Não inclua credenciais no Git.
+4. Antes de usar as rotas de negócio, execute as migrations conforme o
+   procedimento acima, com acesso ao banco de produção. Elas não são executadas
+   automaticamente pelo workflow nem pelo contêiner da aplicação.
+5. Em **Settings** do serviço Render, obtenha o Deploy Hook e crie no GitHub,
+   em **Settings > Secrets and variables > Actions**, o segredo de repositório
+   `RENDER_DEPLOY_HOOK_URL` com essa URL. Trate-a como credencial.
+
+O workflow solicita o deploy do commit validado somente em push na `main`,
+após type-check, compilação e build Docker. A aceitação do hook apenas inicia
+o deploy; acompanhe seu resultado e o health check no painel do Render.
+A criação inicial do serviço pode iniciar um deploy: configure-o somente
+quando estiver pronto para publicar.

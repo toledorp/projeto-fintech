@@ -3,8 +3,7 @@ require('dotenv').config();
 const isSSL = process.env.DB_SSL === 'true';
 const databaseUrl = process.env.DATABASE_URL;
 
-module.exports = {
-  development: {
+const databaseConfig = {
     ...(databaseUrl ? { use_env_variable: 'DATABASE_URL' } : {}),
     username: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
@@ -20,5 +19,9 @@ module.exports = {
           }
         }
       : {}
-  }
+};
+
+module.exports = {
+  development: databaseConfig,
+  production: databaseConfig,
 };
