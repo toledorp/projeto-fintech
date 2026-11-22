@@ -19,6 +19,7 @@ app.use(express.json());
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'OK',
+    entrega: 'AT2 IEC - CI/CD com GitHub Actions e Render',
     mensagem: 'Servidor Backend rodando com sucesso.',
     timestamp: new Date().toISOString(),
   });

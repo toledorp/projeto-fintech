@@ -3,6 +3,18 @@
 API de controle financeiro pessoal com usuários, autenticação JWT e lançamentos
 de receitas e despesas persistidos em PostgreSQL.
 
+## Arquitetura e acesso
+
+O backend usa Express, TypeScript e Sequelize com PostgreSQL no Supabase.
+O Docker gera a imagem de produção em múltiplos estágios; o GitHub Actions
+valida e compila o backend, constrói a imagem e aciona o Render.
+
+- API: https://fintech-backend-at2.onrender.com
+- Health check: https://fintech-backend-at2.onrender.com/api/health
+- Swagger: https://fintech-backend-at2.onrender.com/api/docs
+
+O health check confirma que a API responde; não verifica continuamente o banco.
+
 ## Requisitos
 
 - Node.js
@@ -123,7 +135,6 @@ Com Docker Desktop instalado e iniciado:
 docker compose up --build
 ```
 
-
 ### Migrations em producao
 
 Execute as migrations separadamente antes de iniciar a nova versao da API.
@@ -141,13 +152,12 @@ O comando executa `sequelize-cli db:migrate --env production`; o Sequelize
 registra as migrations aplicadas na tabela `SequelizeMeta`. Nao execute duas
 instancias de migration simultaneamente.
 
-
 ### Configuração do Render e do GitHub Actions
 
 1. No Render, crie um **Web Service** com runtime Docker, conecte o repositório
-   e selecione a branch `main`. Para o monorepositório, defina **Root Directory**
-   como `backend`; use `./Dockerfile` como Dockerfile Path e `.` como Docker
-   Build Context, ambos relativos a esse diretório.
+   e selecione a branch `main`. Para o monorepositório, deixe **Root Directory**
+   vazio, configure **Dockerfile Path** como `backend/Dockerfile` e **Docker
+   Build Context** como `backend`.
 2. Em **Auto-Deploy**, selecione **Off** (ou **No**, conforme a interface),
    para que a publicação seja solicitada pelo workflow. Configure **Health
    Check Path** como `/api/health`.
@@ -166,3 +176,34 @@ após type-check, compilação e build Docker. A aceitação do hook apenas inic
 o deploy; acompanhe seu resultado e o health check no painel do Render.
 A criação inicial do serviço pode iniciar um deploy: configure-o somente
 quando estiver pronto para publicar.
+
+## Roteiro HTTP sem gravação
+
+Os exemplos abaixo são apenas um roteiro; use dados de teste e não
+compartilhe senhas ou tokens. A resposta publicada do health check receberá
+o campo `entrega` somente após o próximo deploy.
+
+```http
+GET https://fintech-backend-at2.onrender.com/api/health
+
+### Login com corpo incompleto: espera-se HTTP 400, sem gravar no banco
+POST https://fintech-backend-at2.onrender.com/api/auth/login
+Content-Type: application/json
+
+{}
+
+### Sem token: espera-se HTTP 401
+GET https://fintech-backend-at2.onrender.com/api/lancamentos
+
+### Com token de um usuário de teste já existente: espera-se HTTP 200
+GET https://fintech-backend-at2.onrender.com/api/lancamentos
+Authorization: Bearer <TOKEN_DE_TESTE>
+```
+
+Para obter um token, `POST /api/auth/login` recebe `email` e `password` de
+um usuário existente. `GET /api/users` e `GET /api/users/:id` leem dados
+de usuários e atualmente não exigem autenticação; evite expor suas respostas.
+As rotas de lançamentos exigem JWT. `POST`, `PUT` e `DELETE` de usuários
+ou lançamentos alteram dados e não fazem parte deste roteiro de leitura.
+Configure um `JWT_SECRET` forte no Render: o código usa uma chave padrão
+quando a variável está ausente.
